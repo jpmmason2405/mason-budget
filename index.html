@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mason Budget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root {
+  --navy: #00306b;
+  --navy-08: rgba(0, 48, 107, 0.08);
+  --navy-15: rgba(0, 48, 107, 0.15);
+  --teal-deep: #0f4c4c;
+  --teal: #1a6b6b;
+  --teal-soft: #2d8a8a;
+  --surface: #fffcf7;
+  --surface-container: #f6f4ec;
+  --surface-elevated: rgba(255, 255, 255, 0.88);
+  --on-surface: #1a1816;
+  --on-surface-variant: #3a3632;
+  --on-surface-muted: rgba(58, 54, 50, 0.55);
+  --on-surface-faint: rgba(58, 54, 50, 0.35);
+  --border: rgba(58, 54, 50, 0.12);
+  --border-strong: rgba(58, 54, 50, 0.25);
+  --eating: #c2410c;
+  --nonbudgeted: #7c3aed;
+  --gas: #b45309;
+  --groceries: #047857;
+  --income: #0f4c4c;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
+  --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem;
+  --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem;
+  --radius: 3px; --radius-lg: 6px;
+  --font-editorial: 'Libre Baskerville', Georgia, serif;
+  --font-headline: 'Montserrat', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--surface);
+  color: var(--on-surface);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle grain overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0;
+}
+
+.wrap { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 0 var(--space-6); }
+
+/* Header */
+header.masthead {
+  padding: var(--space-10) 0 var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+.kicker {
+  font-family: var(--font-headline);
+  font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--teal-deep);
+  margin-bottom: var(--space-3);
+}
+h1.title {
+  font-family: var(--font-headline);
+  font-weight: 600;
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-3);
+  color: var(--navy);
+}
+.subtitle {
+  font-family: var(--font-editorial);
+  font-style: italic;
+  font-size: 1.0625rem;
+  color: var(--on-surface-variant);
+  max-width: 720px;
+  margin: 0;
+}
+.subtitle em {
+  background: linear-gradient(90deg, var(--navy), var(--teal-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-style: italic;
+}
+
+/* Tab nav */
+nav.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-8);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+nav.tabs button {
+  font-family: var(--font-headline);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  color: var(--on-surface-muted);
+  border-bottom: 2px solid transparent;
+  letter-spacing: 0.04em;
+  transition: all 0.15s ease;
+  margin-bottom: -1px;
+}
+nav.tabs button:hover {
+  color: var(--navy);
+}
+nav.tabs button.active {
+  color: var(--navy);
+  border-bottom-color: var(--navy);
+  font-weight: 600;
+}
+
+/* Panels */
+.panel { display: none; padding: var(--space-10) 0; }
+.panel.active { display: block; }
+
+/* Section headings */
+h2.section {
+  font-family: var(--font-headline);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+  margin: 0 0 var(--space-2);
+}
+.section-kicker {
+  font-family: var(--font-headline);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--teal-deep);
+  margin-bottom: var(--space-2);
+}
+.section-note {
+  color: var(--on-surface-muted);
+  font-size: 0.9375rem;
+  margin: 0 0 var(--space-6);
+}
+
+/* KPI cards */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-10);
+}
+.kpi {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  position: relative;
+}
+.kpi::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--navy);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.kpi--teal::before { background: var(--teal-deep); }
+.kpi--income::before { background: var(--income); }
+.kpi--surplus::before { background: var(--groceries); }
+.kpi--deficit::before { background: var(--eating); }
+.kpi-label {
+  font-family: var(--font-headline);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--on-surface-muted);
+  margin-bottom: var(--space-2);
+}
+.kpi-value {
+  font-family: var(--font-headline);
+  font-size: 1.875rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--on-surface);
+  line-height: 1.05;
+}
+.kpi-sub {
+  margin-top: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--on-surface-muted);
+}
+.kpi-sub.up { color: var(--eating); }
+.kpi-sub.down { color: var(--groceries); }
+
+/* Two-column layout for monthly budget */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-10);
+}
+@media (max-width: 760px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+}
+.card h3 {
+  font-family: var(--font-headline);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-4);
+  color: var(--navy);
+  letter-spacing: -0.005em;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.card h3 .total {
+  font-size: 0.875rem;
+  color: var(--teal-deep);
+  font-weight: 600;
+}
+
+/* Line item table */
+.lines {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.lines td {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--on-surface-variant);
+}
+.lines td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  color: var(--on-surface);
+  font-weight: 500;
+}
+.lines tr:last-child td { border-bottom: none; }
+.lines tr.total-row td {
+  border-top: 2px solid var(--on-surface);
+  border-bottom: none;
+  padding-top: var(--space-3);
+  font-family: var(--font-headline);
+  font-weight: 600;
+  color: var(--navy);
+}
+.lines tr.total-row td:last-child {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+/* Category sections within a month */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+@media (max-width: 760px) {
+  .cat-grid { grid-template-columns: 1fr; }
+}
+.cat-card {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+}
+.cat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--border);
+}
+.cat-name {
+  font-family: var(--font-headline);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--on-surface);
+}
+.cat-eating .cat-name { color: var(--eating); }
+.cat-nonbudgeted .cat-name { color: var(--nonbudgeted); }
+.cat-gas .cat-name { color: var(--gas); }
+.cat-groceries .cat-name { color: var(--groceries); }
+.cat-total {
+  font-family: var(--font-headline);
+  font-weight: 600;
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+}
+.cat-eating .cat-total { color: var(--eating); }
+.cat-nonbudgeted .cat-total { color: var(--nonbudgeted); }
+.cat-gas .cat-total { color: var(--gas); }
+.cat-groceries .cat-total { color: var(--groceries); }
+
+.vendor-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  font-size: 0.875rem;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.vendor-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  gap: var(--space-3);
+}
+.vendor-list li:last-child { border-bottom: none; }
+.vendor-list .v-name {
+  color: var(--on-surface-variant);
+}
+.vendor-list .v-amount {
+  color: var(--on-surface);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vendor-list li.top .v-name { font-weight: 600; color: var(--on-surface); }
+.vendor-list li.top .v-amount { font-weight: 600; }
+
+/* Chart container */
+.chart-card {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+  margin-bottom: var(--space-10);
+}
+.chart-card h3 {
+  font-family: var(--font-headline);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-2);
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.chart-card .chart-note {
+  font-size: 0.875rem;
+  color: var(--on-surface-muted);
+  margin: 0 0 var(--space-5);
+}
+.chart-wrap {
+  position: relative;
+  height: 340px;
+}
+
+/* Monthly summary table on cover */
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  margin-top: var(--space-6);
+}
+.summary-table th {
+  font-family: var(--font-headline);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--on-surface-muted);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+  text-align: right;
+}
+.summary-table th:first-child { text-align: left; }
+.summary-table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface);
+}
+.summary-table td:first-child {
+  text-align: left;
+  font-weight: 500;
+  color: var(--navy);
+  font-family: var(--font-headline);
+}
+.summary-table tr.avg td {
+  border-top: 2px solid var(--on-surface);
+  border-bottom: none;
+  font-family: var(--font-headline);
+  font-weight: 600;
+  color: var(--navy);
+  padding-top: var(--space-4);
+}
+
+footer.foot {
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-12);
+  padding: var(--space-6) 0 var(--space-10);
+  font-size: 0.8125rem;
+  color: var(--on-surface-muted);
+}
+
+@media print {
+  body::before { display: none; }
+  nav.tabs { display: none; }
+  .panel { display: block !important; page-break-before: always; }
+  .panel:first-of-type { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">Mason Family Finances</div>
+  <h1 class="title">Budget Dashboard</h1>
+  <p class="subtitle">A <em>monthly snapshot</em> of fixed obligations, the variable spending lanes that move month to month, and where the actuals landed across the last six months of activity.</p>
+
+  <nav class="tabs" id="tabnav">
+    <button class="active" data-tab="cover">Monthly Budget</button>
+    <button data-tab="nov">November 2025</button>
+    <button data-tab="jan">January 2026</button>
+    <button data-tab="feb">February 2026</button>
+    <button data-tab="mar">March 2026</button>
+    <button data-tab="apr">April 2026</button>
+    <button data-tab="may">May 2026</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============== COVER ============== -->
+<section class="panel active" id="cover">
+
+  <div class="section-kicker">The plan</div>
+  <h2 class="section">Monthly budget at a glance</h2>
+  <p class="section-note">Fixed obligations plus the four variable lanes the household budgets toward each month, with the same items shown by which account they hit.</p>
+
+  <div class="kpi-strip">
+    <div class="kpi kpi--income">
+      <div class="kpi-label">Monthly Income</div>
+      <div class="kpi-value" id="kpi-income"></div>
+      <div class="kpi-sub">Josh &amp; Kristen combined</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Fixed Expenses</div>
+      <div class="kpi-value" id="kpi-fixed"></div>
+      <div class="kpi-sub">Recurring monthly bills</div>
+    </div>
+    <div class="kpi kpi--teal">
+      <div class="kpi-label">Variable Budget</div>
+      <div class="kpi-value" id="kpi-variable"></div>
+      <div class="kpi-sub">Eating out, gas, groceries, shopping</div>
+    </div>
+    <div class="kpi" id="kpi-surplus-card">
+      <div class="kpi-label">Surplus / Deficit</div>
+      <div class="kpi-value" id="kpi-surplus"></div>
+      <div class="kpi-sub">Income minus budgeted expenses</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>Fixed Expenses <span class="total" id="fixed-total-h"></span></h3>
+      <table class="lines" id="fixed-table"></table>
+    </div>
+    <div class="card">
+      <h3>Variable Expenses <span class="total" id="variable-total-h"></span></h3>
+      <table class="lines" id="variable-table"></table>
+    </div>
+  </div>
+
+  <div class="section-kicker">By account</div>
+  <h2 class="section">Where each charge lands</h2>
+  <p class="section-note">The same household bills, split by which card or account they pull from.</p>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>Chase Charges <span class="total" id="chase-total-h"></span></h3>
+      <table class="lines" id="chase-table"></table>
+    </div>
+    <div class="card">
+      <h3>US Bank Charges <span class="total" id="us-bank-total-h"></span></h3>
+      <table class="lines" id="us-bank-table"></table>
+    </div>
+  </div>
+
+  <div class="section-kicker">The actuals</div>
+  <h2 class="section">Six months of variable spending</h2>
+  <p class="section-note">Variable spending only — eating out, non-budgeted, gas, and groceries. Fixed bills are excluded since they don't vary month to month. June 2026 is still active and not included.</p>
+
+  <div class="chart-card">
+    <h3>Monthly variable spending by category</h3>
+    <p class="chart-note">Stacked bars show how each month's variable spend breaks down. Dashed line marks the $5,800 monthly variable budget.</p>
+    <div class="chart-wrap">
+      <canvas id="summary-chart"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Monthly totals</h3>
+    <table class="summary-table" id="summary-table"></table>
+  </div>
+
+</section>
+
+<!-- ============== MONTHLY TABS ============== -->
+<section class="panel" id="nov" data-month="November 2025"></section>
+<section class="panel" id="jan" data-month="January 2026"></section>
+<section class="panel" id="feb" data-month="February 2026"></section>
+<section class="panel" id="mar" data-month="March 2026"></section>
+<section class="panel" id="apr" data-month="April 2026"></section>
+<section class="panel" id="may" data-month="May 2026"></section>
+
+</main>
+
+<footer class="foot">
+  Sourced from the <em>Mason Budget</em> Google Sheet. Vendor totals are aggregated within each category (e.g., five In-N-Out charges in a month appear as one line with the combined amount). June 2026 omitted while active.
+</footer>
+
+</div>
+
+<script>
+const DATA = {"monthly_budget":{"fixed":[{"item":"Mortgage","amount":5987.0},{"item":"Verizon","amount":231.0},{"item":"Car Payment","amount":736.0},{"item":"PGE, Water, Garbage","amount":500.0},{"item":"Car Insurance","amount":290.0},{"item":"Department of Education","amount":174.0},{"item":"Netflix","amount":25.0},{"item":"At&T","amount":66.0},{"item":"YouTubetv","amount":83.0},{"item":"Apple Charges","amount":25.0},{"item":"Housecleaning","amount":432.0},{"item":"Emerie/Colton- College Savings","amount":100.0},{"item":"Gymnastics/Dance","amount":356.0},{"item":"Josh/Cole Hair","amount":90.0},{"item":"Keke Hair","amount":350.0},{"item":"Pelaton","amount":49.0},{"item":"Waxing","amount":70.0},{"item":"Life Insurance","amount":202.0},{"item":"Dawn Money","amount":160.0},{"item":"Mabel","amount":100.0},{"item":"Pest Control","amount":60.0},{"item":"Lawn","amount":120.0}],"variable":[{"item":"Eating out","amount":1500.0},{"item":"Gas","amount":600.0},{"item":"Groceries","amount":1200.0},{"item":"Shopping/Target , etc","amount":2500.0}],"chase":[{"item":"Netflix","amount":25.0},{"item":"YouTubetv","amount":83.0},{"item":"Apple Charges","amount":25.0},{"item":"Pelaton","amount":49.0},{"item":"Gymnastics/Dance","amount":356.0},{"item":"Josh and Colton Hair","amount":90.0},{"item":"Keke Hair","amount":350.0},{"item":"Water and Garbage","amount":150.0},{"item":"Waxing","amount":50.0},{"item":"Car Insurance","amount":290.0},{"item":"Mabel","amount":100.0},{"item":"Pest Control","amount":120.0}],"us_bank":[{"item":"Mortgage","amount":5987.0},{"item":"Life Insurance","amount":202.0},{"item":"Chevy","amount":736.0},{"item":"PGE","amount":350.0},{"item":"Department of Education","amount":174.0},{"item":"Emerie/Colton- College Savings","amount":100.0},{"item":"Mimi money","amount":160.0},{"item":"House Cleaning","amount":432.0},{"item":"Verizon","amount":226.0},{"item":"Lawn","amount":120.0},{"item":"Charter- Internet","amount":66.0}],"fixed_total":10206.0,"variable_total":5800.0,"chase_total":1688.0,"us_bank_total":8553.0,"income":16066.0,"total_expenses":16006.0},"months":{"November 2025":{"Eating Out":{"items":[{"vendor":"Mod Pizza","amount":270.99},{"vendor":"In-N-Out","amount":253.49},{"vendor":"McDonald's","amount":162.83},{"vendor":"Casa Del Lago","amount":156.82},{"vendor":"Early Toast","amount":129.63},{"vendor":"Chipotle","amount":123.22},{"vendor":"Farmers","amount":109.35},{"vendor":"DoorDash","amount":101.52},{"vendor":"Chick-fil-A","amount":92.83},{"vendor":"Olive Garden","amount":91.8},{"vendor":"Zoca","amount":80.0},{"vendor":"Raising Canes","amount":74.75},{"vendor":"Starbucks","amount":64.15},{"vendor":"Pizza Fact","amount":41.93},{"vendor":"Cinn and Dough","amount":33.45},{"vendor":"Jamba","amount":17.6},{"vendor":"Menchies","amount":16.43},{"vendor":"BLVD Coffee","amount":16.1}],"total":1836.89},"Non-Budgeted Expenses":{"items":[{"vendor":"Target","amount":566.19},{"vendor":"Amazon","amount":386.82},{"vendor":"OneQuince Q","amount":235.72},{"vendor":"Zara","amount":222.53},{"vendor":"Nordstrom","amount":179.65},{"vendor":"Lumi Spa","amount":174.93},{"vendor":"Sephora","amount":163.77},{"vendor":"Galleria","amount":160.09},{"vendor":"H&M","amount":157.66},{"vendor":"Walmart","amount":118.64},{"vendor":"Kaiser","amount":79.88},{"vendor":"J Nash","amount":79.37},{"vendor":"Lowes","amount":75.06},{"vendor":"Athletic","amount":71.99},{"vendor":"Little Stocking","amount":71.99},{"vendor":"Square 1 Art","amount":68.12},{"vendor":"Reyha Dance","amount":66.0},{"vendor":"Kids Museum","amount":59.13},{"vendor":"Childrens Mus","amount":58.0},{"vendor":"Dave Busters","amount":56.0},{"vendor":"Baseball Life","amount":53.15},{"vendor":"Peloton","amount":49.99},{"vendor":"Bamboo Little","amount":42.28},{"vendor":"Planetbox","amount":38.94},{"vendor":"Maenhair","amount":38.0},{"vendor":"Glittery Slime","amount":35.2},{"vendor":"Apple","amount":34.98},{"vendor":"Little Sleepies","amount":34.64},{"vendor":"Med Supply","amount":32.31},{"vendor":"Etsy","amount":31.06},{"vendor":"Best Buy","amount":30.62},{"vendor":"Colton Hair","amount":30.0},{"vendor":"HIYA","amount":30.0},{"vendor":"See's Candy","amount":27.15},{"vendor":"Dump","amount":25.25},{"vendor":"Kids Strong","amount":25.0},{"vendor":"Lincoln Mus","amount":25.0},{"vendor":"Scholastic Inc.","amount":22.49},{"vendor":"Evie Pearl","amount":16.02},{"vendor":"Indian Creek","amount":15.0},{"vendor":"Green Acres","amount":11.8},{"vendor":"Sunstar Vending","amount":7.0},{"vendor":"Arco","amount":5.36}],"total":3712.78},"Gas":{"items":[{"vendor":"Shell","amount":162.65},{"vendor":"Safeway","amount":81.65},{"vendor":"Speedway","amount":70.08},{"vendor":"Arco","amount":62.46}],"total":376.84},"Groceries":{"items":[{"vendor":"Walmart","amount":858.51},{"vendor":"Panda Express","amount":137.7},{"vendor":"Safeway","amount":71.68}],"total":1067.89}},"January 2026":{"Eating Out":{"items":[{"vendor":"In-N-Out","amount":303.16},{"vendor":"Chick-fil-A","amount":251.56},{"vendor":"Chipotle","amount":143.17},{"vendor":"McDonald's","amount":126.93},{"vendor":"Cheesecake Factory","amount":100.42},{"vendor":"Casa Del Lago","amount":83.35},{"vendor":"Buca","amount":73.17},{"vendor":"Dutch Bros","amount":66.88},{"vendor":"Chicago Fire","amount":58.43},{"vendor":"Sienna","amount":58.19},{"vendor":"Round Table","amount":52.92},{"vendor":"Starbucks","amount":52.6},{"vendor":"Greek","amount":42.94},{"vendor":"Don Q","amount":40.22},{"vendor":"Mod Pizza","amount":28.29},{"vendor":"Shell","amount":17.56},{"vendor":"Beach Hut Deli","amount":15.04},{"vendor":"See's","amount":12.07},{"vendor":"Baskin Robbins","amount":11.86},{"vendor":"DoorDash","amount":5.74},{"vendor":"Arco","amount":5.57}],"total":1550.07},"Non-Budgeted Expenses":{"items":[{"vendor":"Target","amount":492.45},{"vendor":"Amazon","amount":335.92},{"vendor":"Sheraton","amount":327.31},{"vendor":"Five Cities Softball","amount":230.0},{"vendor":"J Nash","amount":210.21},{"vendor":"J Crew","amount":204.3},{"vendor":"H&M","amount":159.37},{"vendor":"Kaiser","amount":153.76},{"vendor":"Fabulash","amount":144.5},{"vendor":"Ticketmaster","amount":125.0},{"vendor":"Galleria","amount":112.46},{"vendor":"Famous Footwear","amount":91.01},{"vendor":"Etsy","amount":87.84},{"vendor":"Claire's","amount":87.27},{"vendor":"Old Navy","amount":76.46},{"vendor":"Little Sleepies","amount":69.28},{"vendor":"Monster Jam","amount":66.0},{"vendor":"Walmart","amount":53.14},{"vendor":"Blake Charles Salon","amount":51.48},{"vendor":"European Wax","amount":47.15},{"vendor":"Whit and Whimsy","amount":45.95},{"vendor":"The Shop","amount":45.05},{"vendor":"Target Doordash","amount":39.64},{"vendor":"Office Depot","amount":34.55},{"vendor":"Vet Bill","amount":34.0},{"vendor":"First Place Spirt","amount":27.33},{"vendor":"Crate and Barrel","amount":24.9},{"vendor":"Esthetics Center","amount":23.58},{"vendor":"Car Wash","amount":22.99},{"vendor":"Uber","amount":19.71},{"vendor":"Evie Pearl","amount":16.02},{"vendor":"Rocklin Jump","amount":16.0},{"vendor":"Market Street","amount":15.02},{"vendor":"Bayside","amount":15.0},{"vendor":"Shell","amount":10.55},{"vendor":"Sky Zone","amount":9.89},{"vendor":"Golden 1","amount":7.61},{"vendor":"Redding Public","amount":7.5},{"vendor":"76 Station","amount":6.68},{"vendor":"Reyha Dance","amount":5.0}],"total":3551.88},"Gas":{"items":[{"vendor":"Shell","amount":197.02},{"vendor":"Safeway","amount":76.18},{"vendor":"Costco","amount":51.67}],"total":324.87},"Groceries":{"items":[{"vendor":"Walmart","amount":1053.37},{"vendor":"Panda Express","amount":193.17},{"vendor":"Target","amount":127.3},{"vendor":"Safeway","amount":47.89}],"total":1421.73}},"February 2026":{"Eating Out":{"items":[{"vendor":"In-N-Out","amount":252.13},{"vendor":"Buckhorn","amount":149.61},{"vendor":"Lazy Dog","amount":145.02},{"vendor":"Chicago Fire","amount":120.78},{"vendor":"High Hand","amount":110.21},{"vendor":"Chick-fil-A","amount":95.89},{"vendor":"Wendy's","amount":64.34},{"vendor":"DoorDash","amount":63.04},{"vendor":"Mod Pizza","amount":51.01},{"vendor":"Handels","amount":49.0},{"vendor":"Chipotle","amount":44.07},{"vendor":"LBB Gastropub","amount":40.48},{"vendor":"McDonald's","amount":36.03},{"vendor":"Baskin Robbins","amount":30.39},{"vendor":"Starbucks","amount":27.1},{"vendor":"Venmo","amount":25.0},{"vendor":"Carl's Jr","amount":22.8},{"vendor":"Moksa","amount":21.79},{"vendor":"Wetzels","amount":17.22}],"total":1365.91},"Non-Budgeted Expenses":{"items":[{"vendor":"Dick's Sporting","amount":311.77},{"vendor":"Amazon","amount":310.26},{"vendor":"Car Detail","amount":280.0},{"vendor":"Target","amount":266.46},{"vendor":"H&M","amount":174.74},{"vendor":"Nordstrom Rack","amount":138.9},{"vendor":"Build A Bear","amount":136.3},{"vendor":"Bayside","amount":124.0},{"vendor":"Venmo","amount":108.0},{"vendor":"North Fork","amount":91.5},{"vendor":"Nordstrom","amount":86.2},{"vendor":"Wit Whimsy","amount":83.21},{"vendor":"Kohl's","amount":76.5},{"vendor":"Sky Zone","amount":70.23},{"vendor":"Home Depot","amount":67.68},{"vendor":"Soma","amount":59.27},{"vendor":"Southwest","amount":56.0},{"vendor":"Nails","amount":55.0},{"vendor":"Peekaboo","amount":49.0},{"vendor":"Roseville Mall","amount":44.0},{"vendor":"Five Below","amount":42.91},{"vendor":"Etsy","amount":39.9},{"vendor":"J Crew","amount":29.22},{"vendor":"Quick Quack","amount":28.21},{"vendor":"Dave and Busters","amount":28.0},{"vendor":"Life's Abundance","amount":26.81},{"vendor":"Walmart","amount":23.3},{"vendor":"Car Wash","amount":22.99},{"vendor":"Kids Strong","amount":21.44},{"vendor":"Evie Pearl","amount":16.02},{"vendor":"FedEx","amount":15.21},{"vendor":"Rocklin Jump","amount":11.0},{"vendor":"Prime Video","amount":9.99},{"vendor":"Reyha Dance","amount":5.0},{"vendor":"Google Pay","amount":2.99}],"total":2912.01},"Gas":{"items":[{"vendor":"Shell","amount":224.53},{"vendor":"Safeway","amount":88.78},{"vendor":"Five Star","amount":67.01},{"vendor":"Travel reimburs","amount":-196.48}],"total":183.84},"Groceries":{"items":[{"vendor":"Walmart","amount":1161.95},{"vendor":"Nugget","amount":75.24},{"vendor":"Safeway","amount":41.38},{"vendor":"Coffee","amount":21.63},{"vendor":"Whole Foods","amount":20.63}],"total":1320.83}},"March 2026":{"Eating Out":{"items":[{"vendor":"In-N-Out","amount":293.43},{"vendor":"Chick-fil-A","amount":247.92},{"vendor":"DoorDash","amount":127.61},{"vendor":"McDonald's","amount":107.93},{"vendor":"Casa Del Lago","amount":80.44},{"vendor":"BJ's","amount":77.5},{"vendor":"Lazy Dog","amount":75.31},{"vendor":"Crooked Lane","amount":74.12},{"vendor":"Chipotle","amount":74.07},{"vendor":"Greek","amount":43.48},{"vendor":"Mod Pizza","amount":38.88},{"vendor":"Baskin Robbins","amount":24.24},{"vendor":"Handels","amount":23.25},{"vendor":"Complex Grill","amount":19.0},{"vendor":"Rocklin Doughnuts","amount":13.4},{"vendor":"Starbucks","amount":13.35}],"total":1333.93},"Non-Budgeted Expenses":{"items":[{"vendor":"Amazon","amount":647.71},{"vendor":"Whit and Whim","amount":486.59},{"vendor":"Keke Trip","amount":408.05},{"vendor":"Old Navy","amount":246.21},{"vendor":"Target","amount":239.36},{"vendor":"Walmart","amount":233.54},{"vendor":"TSA Clear","amount":159.9},{"vendor":"Sky Zone","amount":122.95},{"vendor":"Squad Up","amount":92.7},{"vendor":"Best in Show","amount":90.45},{"vendor":"Lululemon","amount":73.27},{"vendor":"Five Cities Softball","amount":72.0},{"vendor":"Foggy Dog","amount":64.94},{"vendor":"Classic WHI","amount":63.08},{"vendor":"Five Star","amount":57.97},{"vendor":"Dave and Busters","amount":56.0},{"vendor":"The Shop","amount":53.63},{"vendor":"Ultimate Exp","amount":53.04},{"vendor":"Famous Footwear","amount":52.79},{"vendor":"Five Below","amount":48.39},{"vendor":"Quary Park","amount":48.32},{"vendor":"Franklin","amount":40.0},{"vendor":"Keke Hair","amount":40.0},{"vendor":"Green Acres","amount":35.93},{"vendor":"Sierra College","amount":34.0},{"vendor":"Franklin PTC","amount":30.0},{"vendor":"Bayside","amount":29.0},{"vendor":"Mothership","amount":27.06},{"vendor":"Walgreens/Doordash","amount":22.05},{"vendor":"Kids Strong","amount":21.44},{"vendor":"Batteries Plus","amount":18.31},{"vendor":"Prime Membership","amount":16.08},{"vendor":"Evie Pearl","amount":16.02},{"vendor":"Disney","amount":12.99},{"vendor":"GE Pony","amount":11.0},{"vendor":"Golden Eag Pony","amount":8.0},{"vendor":"Sac Air Port","amount":4.0},{"vendor":"Google One","amount":2.99},{"vendor":"J Crew","amount":-20.0},{"vendor":"(unspecified)","amount":-50.0},{"vendor":"Mabel Budgeted Money","amount":-100.0}],"total":3569.76},"Gas":{"items":[{"vendor":"Shell","amount":408.37},{"vendor":"Safeway","amount":94.74}],"total":503.11},"Groceries":{"items":[{"vendor":"Walmart","amount":893.89},{"vendor":"Raleys","amount":40.69},{"vendor":"Safeway","amount":40.64}],"total":975.22}},"April 2026":{"Eating Out":{"items":[{"vendor":"Storytelling","amount":234.73},{"vendor":"Chick-fil-A","amount":233.2},{"vendor":"In-N-Out","amount":206.92},{"vendor":"Yard House","amount":118.0},{"vendor":"McDonald's","amount":114.03},{"vendor":"Bal Point","amount":108.73},{"vendor":"Station","amount":105.22},{"vendor":"Lazy Dog","amount":100.27},{"vendor":"Chipotle","amount":94.47},{"vendor":"Wine country","amount":91.86},{"vendor":"DoorDash","amount":87.56},{"vendor":"LBB Gastropub","amount":83.4},{"vendor":"Boardwalk","amount":60.8},{"vendor":"Teng terrace","amount":59.0},{"vendor":"Buckhorn","amount":55.45},{"vendor":"Sidewalk","amount":51.98},{"vendor":"Qdoba","amount":45.04},{"vendor":"Palm bar","amount":40.8},{"vendor":"Carl's Jr","amount":32.87},{"vendor":"Starbucks","amount":27.25},{"vendor":"Cafe Daisy","amount":26.16},{"vendor":"Churro","amount":23.75},{"vendor":"Salt and straw","amount":23.57},{"vendor":"Tango","amount":21.46},{"vendor":"Kayla's","amount":20.8},{"vendor":"Beach Hut Deli","amount":16.4},{"vendor":"Baskin Robbins","amount":15.86},{"vendor":"Jazz kitchen","amount":11.84},{"vendor":"Coffee house","amount":7.81}],"total":2119.23},"Non-Budgeted Expenses":{"items":[{"vendor":"SP Evereve","amount":637.98},{"vendor":"Amazon","amount":364.32},{"vendor":"Target","amount":353.31},{"vendor":"function Health","amount":315.0},{"vendor":"North Fork","amount":281.21},{"vendor":"Aerie","amount":232.04},{"vendor":"Nordstrom","amount":189.48},{"vendor":"Jiffy Lube","amount":183.65},{"vendor":"Ex car","amount":170.0},{"vendor":"Anthropologie","amount":160.33},{"vendor":"Claire's","amount":140.05},{"vendor":"Zara","amount":121.13},{"vendor":"Tricks","amount":120.0},{"vendor":"Boot Barn","amount":112.59},{"vendor":"DLR","amount":112.0},{"vendor":"Altitude","amount":109.89},{"vendor":"Teacher Cred","amount":102.65},{"vendor":"Sassy Nails","amount":73.2},{"vendor":"Sky Zone","amount":73.14},{"vendor":"Face paint","amount":61.8},{"vendor":"Web supply","amount":54.0},{"vendor":"Chick-fil-A","amount":50.86},{"vendor":"Dave and Busters","amount":50.0},{"vendor":"Extreme Gym","amount":50.0},{"vendor":"Tan","amount":45.0},{"vendor":"Small world","amount":42.46},{"vendor":"Franklin","amount":36.0},{"vendor":"Roseville","amount":34.99},{"vendor":"Southwest","amount":34.12},{"vendor":"DoorDash","amount":28.37},{"vendor":"Life's Abundance","amount":26.81},{"vendor":"So cal essential","amount":25.87},{"vendor":"Extreme Craze","amount":24.0},{"vendor":"Quick Quack","amount":22.99},{"vendor":"Rocklin Jump","amount":22.0},{"vendor":"Body art","amount":21.54},{"vendor":"Dining reservations","amount":20.0},{"vendor":"walgreens","amount":18.32},{"vendor":"Nor Cal RX","amount":17.02},{"vendor":"Chipotle","amount":16.95},{"vendor":"Prime Membership","amount":16.08},{"vendor":"Evie Pearl","amount":16.02},{"vendor":"Good boy","amount":15.71},{"vendor":"Trader Joe's","amount":15.55},{"vendor":"Disney","amount":13.0},{"vendor":"Dick's Sporting","amount":12.92},{"vendor":"Kaiser","amount":10.0},{"vendor":"Five Cities Softball","amount":10.0},{"vendor":"Sonoma terrace","amount":8.89},{"vendor":"Golden Eagle","amount":7.0},{"vendor":"Etsy","amount":6.1},{"vendor":"Five Cities","amount":6.0},{"vendor":"Safeway","amount":5.92},{"vendor":"Starbucks","amount":5.45},{"vendor":"Well","amount":4.61},{"vendor":"Chevron","amount":3.69},{"vendor":"Google","amount":2.99}],"total":4715.0},"Gas":{"items":[{"vendor":"Shell","amount":325.43},{"vendor":"Safeway","amount":120.97},{"vendor":"(unspecified)","amount":98.12}],"total":544.52},"Groceries":{"items":[{"vendor":"Walmart","amount":1205.21},{"vendor":"DoorDash","amount":90.79},{"vendor":"Safeway","amount":50.79}],"total":1346.79}},"May 2026":{"Eating Out":{"items":[{"vendor":"In-N-Out","amount":255.67},{"vendor":"DoorDash","amount":214.81},{"vendor":"Chicago Fire","amount":182.36},{"vendor":"Olive Garden","amount":153.85},{"vendor":"Starbucks","amount":116.0},{"vendor":"Chipotle","amount":111.23},{"vendor":"Chick-fil-A","amount":109.01},{"vendor":"Casa Del Lago","amount":105.57},{"vendor":"Cheesecake Factory","amount":83.29},{"vendor":"Moksa","amount":67.82},{"vendor":"McDonald's","amount":59.44},{"vendor":"Rawlings","amount":36.0},{"vendor":"Chillin","amount":33.0},{"vendor":"Dutch Bros","amount":31.3},{"vendor":"Handels","amount":25.82},{"vendor":"Panda Express","amount":22.2},{"vendor":"Golden Eagle","amount":19.0},{"vendor":"Rosies","amount":14.56},{"vendor":"Baskin Robbins","amount":12.85},{"vendor":"Apple","amount":8.0},{"vendor":"Rosales","amount":6.0}],"total":1667.78},"Non-Budgeted Expenses":{"items":[{"vendor":"Amazon","amount":989.94},{"vendor":"Target","amount":935.66},{"vendor":"North Fork","amount":881.9},{"vendor":"Reyha Dance","amount":399.0},{"vendor":"Bayside","amount":184.0},{"vendor":"H&M","amount":175.78},{"vendor":"Shop","amount":158.06},{"vendor":"Kaiser","amount":145.0},{"vendor":"IVY Session","amount":140.0},{"vendor":"Talk to Ivy","amount":140.0},{"vendor":"Peloton","amount":134.15},{"vendor":"Lumi Spa","amount":108.15},{"vendor":"Walgreens","amount":100.11},{"vendor":"Venmo","amount":100.0},{"vendor":"Nugget","amount":100.0},{"vendor":"SP Pixielane Retail","amount":89.35},{"vendor":"Little Bip","amount":87.38},{"vendor":"Old Navy","amount":87.21},{"vendor":"Ulta","amount":85.8},{"vendor":"Little Sleepies","amount":69.28},{"vendor":"Green Acres","amount":57.37},{"vendor":"PetSmart","amount":55.84},{"vendor":"Walmart","amount":55.48},{"vendor":"Soma","amount":53.88},{"vendor":"Anthropologie","amount":50.0},{"vendor":"Lululemon","amount":50.0},{"vendor":"Whit and Whim","amount":46.81},{"vendor":"Tricks","amount":46.12},{"vendor":"Cal expo","amount":43.36},{"vendor":"Michaels","amount":42.35},{"vendor":"Brass Ring","amount":40.0},{"vendor":"Sky Zone","amount":36.62},{"vendor":"tiny jams","amount":35.2},{"vendor":"Quick Quack","amount":34.99},{"vendor":"American Eagle","amount":34.76},{"vendor":"SP Kitsch","amount":34.62},{"vendor":"Zelle","amount":29.0},{"vendor":"Handels","amount":24.78},{"vendor":"Extreme Craze","amount":24.0},{"vendor":"Trader Joe's","amount":21.34},{"vendor":"Atlas","amount":20.0},{"vendor":"Bogueys","amount":20.0},{"vendor":"Shell","amount":17.96},{"vendor":"Evie Pearl","amount":16.02},{"vendor":"Disney","amount":12.99},{"vendor":"Xtreme Gymnastics","amount":12.0},{"vendor":"Mabel","amount":10.95},{"vendor":"KP Nor Cal","amount":10.0},{"vendor":"Five Below","amount":7.82},{"vendor":"Loves","amount":7.39},{"vendor":"76.0","amount":5.58},{"vendor":"Pilot","amount":5.38},{"vendor":"Google","amount":2.99},{"vendor":"Dick's Sporting","amount":-12.92}],"total":6063.45},"Gas":{"items":[{"vendor":"Shell","amount":319.26},{"vendor":"Safeway","amount":226.58},{"vendor":"Arco","amount":86.64},{"vendor":"76.0","amount":77.68},{"vendor":"Poppy","amount":75.0}],"total":785.16},"Groceries":{"items":[{"vendor":"Walmart","amount":1165.28},{"vendor":"Safeway","amount":47.03},{"vendor":"Raleys","amount":39.5},{"vendor":"Nugget","amount":30.03}],"total":1281.84}}},"month_summary":{"November 2025":{"Eating Out":1836.89,"Non-Budgeted Expenses":3712.78,"Gas":376.84,"Groceries":1067.89,"grand_total":6994.4},"January 2026":{"Eating Out":1550.07,"Non-Budgeted Expenses":3551.88,"Gas":324.87,"Groceries":1421.73,"grand_total":6848.55},"February 2026":{"Eating Out":1365.91,"Non-Budgeted Expenses":2912.01,"Gas":183.84,"Groceries":1320.83,"grand_total":5782.59},"March 2026":{"Eating Out":1333.93,"Non-Budgeted Expenses":3569.76,"Gas":503.11,"Groceries":975.22,"grand_total":6382.02},"April 2026":{"Eating Out":2119.23,"Non-Budgeted Expenses":4715.0,"Gas":544.52,"Groceries":1346.79,"grand_total":8725.54},"May 2026":{"Eating Out":1667.78,"Non-Budgeted Expenses":6063.45,"Gas":785.16,"Groceries":1281.84,"grand_total":9798.23}},"month_order":["November 2025","January 2026","February 2026","March 2026","April 2026","May 2026"]};
+
+const fmt = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt0 = n => '$' + Math.round(Number(n)).toLocaleString('en-US');
+
+// --- Cover ---
+const mb = DATA.monthly_budget;
+document.getElementById('kpi-income').textContent = fmt0(mb.income);
+document.getElementById('kpi-fixed').textContent = fmt0(mb.fixed_total);
+document.getElementById('kpi-variable').textContent = fmt0(mb.variable_total);
+const surplus = mb.income - mb.total_expenses;
+const surplusEl = document.getElementById('kpi-surplus');
+surplusEl.textContent = (surplus >= 0 ? '+' : '') + fmt0(surplus);
+document.getElementById('kpi-surplus-card').classList.add(surplus >= 0 ? 'kpi--surplus' : 'kpi--deficit');
+
+function renderLineTable(tableId, items, totalAmount, totalLabel) {
+  const t = document.getElementById(tableId);
+  let html = '<tbody>';
+  for (const i of items) {
+    html += `<tr><td>${i.item}</td><td>${fmt(i.amount)}</td></tr>`;
+  }
+  html += `<tr class="total-row"><td>${totalLabel || 'Total'}</td><td>${fmt(totalAmount)}</td></tr>`;
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+renderLineTable('fixed-table', mb.fixed, mb.fixed_total, 'Fixed Total');
+const variableRelabeled = mb.variable.map(i => /shopping|target/i.test(i.item) ? { ...i, item: 'Non-Budgeted Expenses' } : i);
+renderLineTable('variable-table', variableRelabeled, mb.variable_total, 'Variable Total');
+renderLineTable('chase-table', mb.chase, mb.chase_total, 'Chase Total');
+renderLineTable('us-bank-table', mb.us_bank, mb.us_bank_total, 'US Bank Total');
+
+document.getElementById('fixed-total-h').textContent = fmt0(mb.fixed_total) + ' / mo';
+document.getElementById('variable-total-h').textContent = fmt0(mb.variable_total) + ' / mo';
+document.getElementById('chase-total-h').textContent = fmt0(mb.chase_total) + ' / mo';
+document.getElementById('us-bank-total-h').textContent = fmt0(mb.us_bank_total) + ' / mo';
+
+// --- Summary table ---
+const months = DATA.month_order;
+const cats = ['Eating Out', 'Non-Budgeted Expenses', 'Gas', 'Groceries'];
+let stHtml = '<thead><tr><th>Month</th>';
+for (const c of cats) stHtml += `<th>${c}</th>`;
+stHtml += '<th>Total</th></tr></thead><tbody>';
+for (const m of months) {
+  const s = DATA.month_summary[m];
+  stHtml += `<tr><td>${m}</td>`;
+  for (const c of cats) stHtml += `<td>${fmt(s[c])}</td>`;
+  stHtml += `<td>${fmt(s.grand_total)}</td></tr>`;
+}
+// Average row
+const avg = { 'Eating Out': 0, 'Non-Budgeted Expenses': 0, 'Gas': 0, 'Groceries': 0, grand_total: 0 };
+for (const m of months) {
+  const s = DATA.month_summary[m];
+  for (const c of cats) avg[c] += s[c];
+  avg.grand_total += s.grand_total;
+}
+for (const c of cats) avg[c] /= months.length;
+avg.grand_total /= months.length;
+stHtml += `<tr class="avg"><td>6-month avg</td>`;
+for (const c of cats) stHtml += `<td>${fmt(avg[c])}</td>`;
+stHtml += `<td>${fmt(avg.grand_total)}</td></tr></tbody>`;
+document.getElementById('summary-table').innerHTML = stHtml;
+
+// --- Summary chart ---
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.color = '#3a3632';
+const catColors = {
+  'Eating Out': '#c2410c',
+  'Non-Budgeted Expenses': '#7c3aed',
+  'Gas': '#b45309',
+  'Groceries': '#047857'
+};
+const ctx = document.getElementById('summary-chart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: months.map(m => m.replace(' 20', ' ’20')),
+    datasets: cats.map(c => ({
+      label: c,
+      data: months.map(m => DATA.month_summary[m][c]),
+      backgroundColor: catColors[c],
+      borderWidth: 0,
+      borderRadius: 2,
+    }))
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 12, family: "'Montserrat', sans-serif" }, boxWidth: 12, padding: 16 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`,
+          footer: items => 'Total: ' + fmt(items.reduce((s,i)=>s+i.parsed.y,0))
+        },
+        backgroundColor: '#1a1816',
+        titleFont: { family: "'Montserrat', sans-serif", weight: '600' },
+        bodyFont: { family: "'Inter', sans-serif" },
+        padding: 12
+      },
+      annotation: false
+    },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { family: "'Montserrat', sans-serif", size: 11 } } },
+      y: { stacked: true, grid: { color: 'rgba(58,54,50,0.08)' }, ticks: { callback: v => '$' + (v/1000) + 'k', font: { size: 11 } } }
+    }
+  },
+  plugins: [{
+    id: 'budgetLine',
+    afterDraw(chart) {
+      const yScale = chart.scales.y;
+      const y = yScale.getPixelForValue(5800);
+      const ctx2 = chart.ctx;
+      ctx2.save();
+      // dashed line
+      ctx2.strokeStyle = '#1a1816';
+      ctx2.setLineDash([4, 4]);
+      ctx2.lineWidth = 1.5;
+      ctx2.beginPath();
+      ctx2.moveTo(chart.chartArea.left, y);
+      ctx2.lineTo(chart.chartArea.right, y);
+      ctx2.stroke();
+      ctx2.setLineDash([]);
+      // pill behind label, anchored upper-right of plot area
+      const label = '$5,800 variable budget';
+      ctx2.font = "600 11px 'Montserrat', sans-serif";
+      const padX = 8, padY = 5;
+      const tw = ctx2.measureText(label).width;
+      const boxW = tw + padX * 2;
+      const boxH = 22;
+      const boxX = chart.chartArea.right - boxW - 6;
+      const boxY = y - boxH - 4;
+      // background pill
+      ctx2.fillStyle = '#1a1816';
+      const r = 4;
+      ctx2.beginPath();
+      ctx2.moveTo(boxX + r, boxY);
+      ctx2.lineTo(boxX + boxW - r, boxY);
+      ctx2.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
+      ctx2.lineTo(boxX + boxW, boxY + boxH - r);
+      ctx2.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
+      ctx2.lineTo(boxX + r, boxY + boxH);
+      ctx2.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
+      ctx2.lineTo(boxX, boxY + r);
+      ctx2.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
+      ctx2.closePath();
+      ctx2.fill();
+      // label text
+      ctx2.fillStyle = '#fffcf7';
+      ctx2.textAlign = 'left';
+      ctx2.textBaseline = 'middle';
+      ctx2.fillText(label, boxX + padX, boxY + boxH / 2 + 0.5);
+      ctx2.restore();
+    }
+  }]
+});
+
+// --- Monthly panels ---
+const monthIds = { 'November 2025':'nov','January 2026':'jan','February 2026':'feb','March 2026':'mar','April 2026':'apr','May 2026':'may' };
+const catSlug = { 'Eating Out':'eating','Non-Budgeted Expenses':'nonbudgeted','Gas':'gas','Groceries':'groceries' };
+
+function renderMonthPanel(monthName) {
+  const id = monthIds[monthName];
+  const el = document.getElementById(id);
+  const data = DATA.months[monthName];
+  const summary = DATA.month_summary[monthName];
+
+  // Find top vendor across all 4 categories
+  let topVendor = null;
+  for (const c of cats) {
+    for (const v of data[c].items) {
+      if (!topVendor || v.amount > topVendor.amount) topVendor = { ...v, category: c };
+    }
+  }
+
+  let html = `
+    <div class="section-kicker">${monthName} actuals</div>
+    <h2 class="section">${monthName}</h2>
+    <p class="section-note">Total variable spend for ${monthName}, broken into the four budget lanes. Each vendor is listed once per category with all charges combined into a single line.</p>
+
+    <div class="kpi-strip">
+      <div class="kpi"><div class="kpi-label">Month Total</div><div class="kpi-value">${fmt0(summary.grand_total)}</div><div class="kpi-sub">All four categories combined</div></div>
+      <div class="kpi kpi--teal"><div class="kpi-label">vs Budget ($5,800)</div><div class="kpi-value">${(summary.grand_total - 5800 >= 0 ? '+' : '') + fmt0(summary.grand_total - 5800)}</div><div class="kpi-sub">${summary.grand_total > 5800 ? 'Over' : 'Under'} variable budget</div></div>
+      <div class="kpi"><div class="kpi-label">Biggest Lane</div><div class="kpi-value">${cats.reduce((b,c) => summary[c] > summary[b] ? c : b, cats[0])}</div><div class="kpi-sub">${fmt0(Math.max(...cats.map(c => summary[c])))}</div></div>
+      <div class="kpi kpi--teal"><div class="kpi-label">Top Vendor</div><div class="kpi-value" style="font-size:1.5rem">${topVendor.vendor}</div><div class="kpi-sub">${fmt(topVendor.amount)} · ${topVendor.category}</div></div>
+    </div>
+
+    <div class="cat-grid">
+  `;
+  for (const c of cats) {
+    const items = data[c].items;
+    const total = data[c].total;
+    html += `
+      <div class="cat-card cat-${catSlug[c]}">
+        <div class="cat-header">
+          <div class="cat-name">${c}</div>
+          <div class="cat-total">${fmt(total)}</div>
+        </div>
+        <ul class="vendor-list">
+    `;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      html += `<li${i < 3 && items.length > 6 ? ' class="top"' : ''}><span class="v-name">${item.vendor}</span><span class="v-amount">${fmt(item.amount)}</span></li>`;
+    }
+    if (items.length === 0) {
+      html += `<li><span class="v-name" style="color:var(--on-surface-faint);font-style:italic">No charges</span><span class="v-amount">$0.00</span></li>`;
+    }
+    html += `</ul></div>`;
+  }
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+for (const m of months) renderMonthPanel(m);
+
+// --- Tab nav ---
+document.getElementById('tabnav').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tab]');
+  if (!btn) return;
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b === btn));
+  const id = btn.dataset.tab;
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === id));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Update hash
+  history.replaceState(null, '', '#' + id);
+});
+
+// Restore from hash
+if (location.hash) {
+  const id = location.hash.slice(1);
+  const btn = document.querySelector(`nav.tabs button[data-tab="${id}"]`);
+  if (btn) btn.click();
+}
+</script>
+</body>
+</html>
